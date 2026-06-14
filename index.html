@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIGÍA · Control de Riesgo Laboral Zona Sur · Grupo Eulen</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a2463">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap');
+:root{--blue:#0a2463;--blue-mid:#1a3a7a;--blue-light:#1e4a9a;--red:#c8102e;--gray-bg:#f4f6f9;--gray-mid:#e0e5ed;--gray-text:#4a5568;--gray-dark:#2d3748;--amber:#f59e0b;--green:#059669;--teal:#0d9488;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Barlow',sans-serif;background:var(--gray-bg);color:var(--gray-dark);min-height:100vh;}
+header{background:var(--blue);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.25);}
+.logo-area{display:flex;align-items:center;gap:12px;}
+.logo-box{background:#fff;padding:5px 12px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:var(--blue);font-size:15px;letter-spacing:1px;}
+.app-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:2px;text-transform:uppercase;}
+.app-sub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:2px;text-transform:uppercase;}
+.header-actions{display:flex;gap:7px;align-items:center;}
+.sync-status{font-size:11px;color:rgba(255,255,255,.6);padding:4px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);}
+.sync-status.ok{color:#6ee7b7;border-color:#6ee7b7;}
+.sync-status.err{color:#fca5a5;border-color:#fca5a5;}
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--gray-mid);padding:0 24px;gap:2px;position:sticky;top:58px;z-index:40;overflow-x:auto;}
+.tab{padding:12px 20px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gray-text);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+.tab.active{color:var(--red);border-bottom-color:var(--red);}
+.tab:hover:not(.active){color:var(--blue);}
+.view{display:none;padding:20px 24px;max-width:1600px;margin:0 auto;}
+.view.active{display:block;}
+.btn{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;border-radius:5px;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--red);color:#fff;} .btn-primary:hover{background:#a50d26;}
+.btn-blue{background:var(--blue);color:#fff;} .btn-blue:hover{background:var(--blue-mid);}
+.btn-outline{background:#fff;color:var(--blue);border:1px solid var(--gray-mid);} .btn-outline:hover{border-color:var(--blue);}
+.btn-sm{padding:5px 9px;font-size:10px;}
+.btn-danger{background:#fee2e2;color:var(--red);}
+.btn-ghost-w{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);} .btn-ghost-w:hover{background:rgba(255,255,255,.22);}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.filters{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+select,input[type=text],input[type=number],input[type=date],textarea{font-family:'Barlow',sans-serif;font-size:12px;padding:7px 9px;border:1px solid var(--gray-mid);border-radius:5px;background:#fff;color:var(--gray-dark);}
+select:focus,input:focus,textarea:focus{outline:2px solid rgba(30,74,154,.3);border-color:var(--blue-light);}
+.search-input{min-width:200px;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+.kpi-card{background:#fff;border-radius:8px;padding:12px 16px;border-left:4px solid var(--blue);box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.kpi-card.red{border-left-color:var(--red);} .kpi-card.amber{border-left-color:var(--amber);} .kpi-card.green{border-left-color:var(--green);} .kpi-card.teal{border-left-color:var(--teal);}
+.kpi-value{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--blue);line-height:1;}
+.kpi-card.red .kpi-value{color:var(--red);} .kpi-card.amber .kpi-value{color:var(--amber);} .kpi-card.green .kpi-value{color:var(--green);}
+.kpi-label{font-size:10px;color:var(--gray-text);text-transform:uppercase;letter-spacing:1px;margin-top:3px;font-weight:600;}
+.data-table-wrap{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:auto;max-height:58vh;}
+table.data{width:100%;border-collapse:collapse;font-size:12px;min-width:1000px;}
+table.data th{background:var(--blue);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 10px;text-align:left;position:sticky;top:0;z-index:5;white-space:nowrap;}
+table.data td{padding:7px 10px;border-bottom:1px solid var(--gray-mid);vertical-align:middle;}
+table.data tr:hover td{background:#f0f4fc;}
+.empty-msg{padding:40px;text-align:center;color:#9aabb8;font-size:13px;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;white-space:nowrap;}
+.b-red{background:#fee2e2;color:var(--red);} .b-green{background:#d1fae5;color:#065f46;} .b-amber{background:#fef3c7;color:#92400e;} .b-blue{background:#e0e7ff;color:var(--blue);} .b-gray{background:#e5e7eb;color:#4b5563;} .b-teal{background:#ccfbf1;color:#115e59;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:28px 14px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:860px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-head{background:var(--blue);border-radius:10px 10px 0 0;padding:14px 22px;display:flex;justify-content:space-between;align-items:center;}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px;}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1;} .modal-close:hover{color:#fff;}
+.modal-body{padding:20px 22px;}
+.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:3px;}
+.form-group.span2{grid-column:span 2;} .form-group.span3{grid-column:span 3;}
+.form-group label{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--blue);}
+.form-group label .req{color:var(--red);}
+.form-group input,.form-group select,.form-group textarea{width:100%;}
+.form-group textarea{resize:vertical;min-height:56px;}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--gray-mid);display:flex;justify-content:flex-end;gap:8px;}
+.section-label{grid-column:span 3;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--red);letter-spacing:2px;text-transform:uppercase;border-bottom:2px solid var(--red);padding-bottom:3px;margin-top:4px;}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.panel{background:#fff;border-radius:8px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.panel-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid var(--red);padding-bottom:6px;margin-bottom:10px;display:inline-block;}
+.chart-box{position:relative;height:240px;}
+.dash-controls{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.loading-overlay{position:fixed;inset:0;background:rgba(10,36,99,.7);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.loading-overlay.hidden{display:none;}
+.spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--blue);color:#fff;padding:11px 20px;border-radius:8px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s;}
+.toast.show{opacity:1;}
+.footer-bar{padding:10px 24px;font-size:10px;color:#9aabb8;text-align:center;border-top:1px solid var(--gray-mid);background:#fff;}
+.drop-menu{position:absolute;top:54px;background:#fff;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,.18);min-width:210px;z-index:200;display:none;overflow:hidden;border:1px solid var(--gray-mid);}
+.drop-menu.open-menu{display:block;}
+.drop-item{padding:10px 16px;font-size:12px;cursor:pointer;color:var(--gray-dark);font-family:'Barlow',sans-serif;transition:background .15s;}
+.drop-item:hover{background:var(--gray-bg);color:var(--blue);}
+.drop-item+.drop-item{border-top:1px solid var(--gray-mid);}
+header{position:relative;}
+.btn-purge{font-family:'Barlow',sans-serif;font-size:10px;font-weight:400;color:#b0b8c4;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px;letter-spacing:.5px;margin-left:auto;opacity:.6;transition:all .2s;}
+.btn-purge:hover{color:var(--red);opacity:1;background:#fff1f3;}
+@media(max-width:768px){.form-grid{grid-template-columns:1fr 1fr}.form-group.span2,.form-group.span3,.section-label{grid-column:span 2}.dash-grid{grid-template-columns:1fr}.header-actions .btn-ghost-w:not(.keep){display:none}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Cargando Vigía...</div>
+</div>
+
+<header>
+  <div class="logo-area">
+    <div class="logo-box">🦉 EULEN</div>
+    <div>
+      <div class="app-name">⛯ VIGÍA</div>
+      <div class="app-sub">Control de Riesgo Laboral · Zona Sur</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="sync-status" id="syncStatus">Conectando...</span>
+    <button class="btn btn-ghost-w btn-sm" onclick="document.getElementById('importMenu').classList.toggle('open-menu')">⬆ Importar ▾</button>
+    <button class="btn btn-ghost-w btn-sm keep" onclick="document.getElementById('exportMenu').classList.toggle('open-menu')">⬇ Exportar ▾</button>
+    <div id="importMenu" class="drop-menu">
+      <div class="drop-item" onclick="triggerImport('.xlsx,.csv,.json')">📊 Excel (.xlsx)</div>
+      <div class="drop-item" onclick="triggerImport('.csv')">📄 CSV</div>
+      <div class="drop-item" onclick="triggerImport('.json')">💾 JSON (backup)</div>
+    </div>
+    <div id="exportMenu" class="drop-menu">
+      <div class="drop-item" onclick="exportExcel()">📊 Excel (.xlsx)</div>
+      <div class="drop-item" onclick="exportCSV('itss')">📄 CSV — Solo ITSS</div>
+      <div class="drop-item" onclick="exportCSV('lit')">📄 CSV — Solo Litigiosidad</div>
+      <div class="drop-item" onclick="exportJSON()">💾 JSON (backup completo)</div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-view="dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+  <button class="tab" data-view="itss" onclick="switchView('itss')">🏛 Inspecciones ITSS</button>
+  <button class="tab" data-view="lit" onclick="switchView('lit')">⚖ Litigiosidad</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="view active" id="view-dashboard">
+  <div class="dash-controls">
+    <label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--blue);text-transform:uppercase;">Filtros:</label>
+    <select id="dashYear" onchange="renderDashboard()"><option value="">Todos los años</option></select>
+    <select id="dashProv" onchange="renderDashboard()"><option value="">Todas las provincias</option></select>
+    <select id="dashAct" onchange="renderDashboard()"><option value="">Todas las actividades</option></select>
+    <button class="btn btn-outline btn-sm" onclick="resetDashFilters()">✕ Limpiar</button>
+    <button class="btn-purge" onclick="purgeAll()" title="Borrar todos los datos de Vigía">⚠ purgar datos</button>
+  </div>
+  <div class="kpi-row" id="dashKpis"></div>
+  <div class="dash-grid">
+    <div class="panel"><span class="panel-title">ITSS · Expedientes y actas por año</span><div class="chart-box"><canvas id="dc1"></canvas></div></div>
+    <div class="panel"><span class="panel-title">ITSS · Sanciones vigentes € por año</span><div class="chart-box"><canvas id="dc2"></canvas></div></div>
+    <div class="panel"><span class="panel-title">Litigiosidad · Distribución de resultados</span><div class="chart-box"><canvas id="dc3"></canvas></div></div>
+    <div class="panel"><span class="panel-title">Litigiosidad · Coste acumulado € por año</span><div class="chart-box"><canvas id="dc4"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ITSS -->
+<div class="view" id="view-itss">
+  <div class="toolbar">
+    <div class="filters">
+      <input type="text" class="search-input" id="itssSearch" placeholder="🔍 Buscar..." oninput="renderItss()">
+      <select id="itssFYear" onchange="renderItss()"><option value="">Año</option></select>
+      <select id="itssFProv" onchange="renderItss()"><option value="">Provincia</option></select>
+      <select id="itssFAct" onchange="renderItss()"><option value="">Actividad</option></select>
+      <select id="itssFEstado" onchange="renderItss()"><option value="">Estado</option><option>Abierto</option><option>Cerrado</option></select>
+      <select id="itssFTipo" onchange="renderItss()"><option value="">Tipo</option><option>RRLL</option><option>PRL</option><option>SS</option><option>Empleo</option></select>
+    </div>
+    <button class="btn btn-primary" onclick="openItssModal()">＋ Nueva inspección</button>
+  </div>
+  <div class="kpi-row" id="itssKpis"></div>
+  <div class="data-table-wrap">
+    <table class="data" id="itssTable"><thead></thead><tbody></tbody></table>
+    <div class="empty-msg" id="itssEmpty" style="display:none">Sin registros. Añade la primera inspección o importa un Excel.</div>
+  </div>
+</div>
+
+<!-- LITIGIOSIDAD -->
+<div class="view" id="view-lit">
+  <div class="toolbar">
+    <div class="filters">
+      <input type="text" class="search-input" id="litSearch" placeholder="🔍 Buscar..." oninput="renderLit()">
+      <select id="litFYear" onchange="renderLit()"><option value="">Año</option></select>
+      <select id="litFProv" onchange="renderLit()"><option value="">Provincia</option></select>
+      <select id="litFAct" onchange="renderLit()"><option value="">Actividad</option></select>
+      <select id="litFTipo" onchange="renderLit()"><option value="">Procedimiento</option></select>
+      <select id="litFResult" onchange="renderLit()"><option value="">Resultado</option></select>
+    </div>
+    <button class="btn btn-primary" onclick="openLitModal()">＋ Nueva demanda</button>
+  </div>
+  <div class="kpi-row" id="litKpis"></div>
+  <div class="data-table-wrap">
+    <table class="data" id="litTable"><thead></thead><tbody></tbody></table>
+    <div class="empty-msg" id="litEmpty" style="display:none">Sin registros. Añade la primera demanda o importa un Excel.</div>
+  </div>
+</div>
+
+<!-- MODAL ITSS -->
+<div class="modal-overlay" id="itssModal">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title" id="itssModalTitle">Nueva inspección</span><button class="modal-close" onclick="closeModal('itssModal')">×</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="section-label">Identificación</div>
+      <div class="form-group"><label>Nº Documento <span class="req">*</span></label><input type="text" id="i_doc"></div>
+      <div class="form-group"><label>Ejercicio <span class="req">*</span></label><input type="number" id="i_ejercicio" min="2015" max="2040"></div>
+      <div class="form-group"><label>Fecha de inicio</label><input type="date" id="i_fecha"></div>
+      <div class="form-group"><label>Empresa</label><select id="i_empresa"><option>25 - EULEN SA</option><option>41 - EULEN SEGURIDAD SA</option><option>43 - EULEN SOCIOSANITARIOS</option><option>49 - EULEN CEE</option><option>OTRA</option></select></div>
+      <div class="form-group"><label>Actividad</label><select id="i_actividad"><option>960 - SERVICIOS AUXILIARES</option><option>910 - LIMPIEZA</option><option>930 - SEGURIDAD</option><option>940 - SOCIOSANITARIO</option><option>950 - MANTENIMIENTO</option><option>OTRA</option></select></div>
+      <div class="form-group"><label>Provincia</label><select id="i_prov"><option>04-ALMERIA</option><option>11-CADIZ</option><option>14-CORDOBA</option><option>18-GRANADA</option><option>21-HUELVA</option><option>23-JAEN</option><option selected>29-MALAGA</option><option>41-SEVILLA</option><option>51-CEUTA</option><option>52-MELILLA</option></select></div>
+      <div class="form-group span2"><label>Cliente / Centro</label><input type="text" id="i_centro"></div>
+      <div class="form-group"><label>Tipo</label><select id="i_tipo"><option>RRLL</option><option>PRL</option><option>SS</option><option>Empleo</option></select></div>
+      <div class="form-group span3"><label>Causa</label><select id="i_causa"><option></option><option>CITACIÓN</option><option>DENUNCIA</option><option>VISITA</option><option>ACCIDENTE DE TRABAJO</option><option>CAMPAÑA</option><option>OFICIO</option><option>OTRA</option></select></div>
+      <div class="section-label">Inspector/a</div>
+      <div class="form-group"><label>Nombre</label><input type="text" id="i_insp_nom"></div>
+      <div class="form-group span2"><label>Apellidos</label><input type="text" id="i_insp_ape"></div>
+      <div class="section-label">Resultado</div>
+      <div class="form-group"><label>Estado</label><select id="i_estado"><option>Abierto</option><option>Cerrado</option></select></div>
+      <div class="form-group"><label>Resultado</label><select id="i_resultado"><option>Pendiente</option><option>Favorable</option><option>Requerimiento</option><option>Acta de infracción</option><option>Acta de liquidación</option><option>Cerrado sin acta</option></select></div>
+      <div class="form-group"><label>Importe acta (€)</label><input type="number" id="i_importe" min="0" step="0.01" value="0"></div>
+      <div class="form-group span2"><label>¿Acta anulada?</label><select id="i_anulada"><option>No</option><option>Sí - en alzada</option><option>Sí - vía judicial</option><option>Recurso en trámite</option></select></div>
+      <div class="form-group"><label>Técnico responsable</label><input type="text" id="i_tecnico"></div>
+      <div class="form-group span3"><label>Objeto de la actuación</label><textarea id="i_objeto"></textarea></div>
+      <div class="form-group span3"><label>Observaciones</label><textarea id="i_obs"></textarea></div>
+    </div></div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('itssModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveItss()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LIT -->
+<div class="modal-overlay" id="litModal">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title" id="litModalTitle">Nueva demanda</span><button class="modal-close" onclick="closeModal('litModal')">×</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="section-label">Identificación</div>
+      <div class="form-group"><label>Nº Autos <span class="req">*</span></label><input type="text" id="l_autos"></div>
+      <div class="form-group"><label>Año</label><input type="number" id="l_year" min="2015" max="2040"></div>
+      <div class="form-group"><label>Fase</label><select id="l_fase"><option>Papeleta CMAC/SMAC</option><option selected>Demanda judicial</option><option>Recurso suplicación</option><option>Recurso casación</option><option>Ejecución</option></select></div>
+      <div class="form-group span2"><label>Tipo de procedimiento</label><select id="l_tipo"><option>Despido</option><option>Cantidad</option><option>Despido + Cantidad</option><option>Cesión ilegal</option><option>Derechos fundamentales</option><option>Modificación sustancial (Art. 41)</option><option>Clasificación profesional</option><option>Reconocimiento de derecho</option><option>Conflicto colectivo</option><option>Sanción</option><option>Incapacidad / Seg. Social</option><option>Accidente de trabajo / Recargo</option><option>Otro</option></select></div>
+      <div class="form-group"><label>Juzgado</label><input type="text" id="l_juzgado"></div>
+      <div class="form-group"><label>Empresa</label><select id="l_empresa"><option>25 - EULEN SA</option><option>41 - EULEN SEGURIDAD SA</option><option>43 - EULEN SOCIOSANITARIOS</option><option>49 - EULEN CEE</option><option>OTRA</option></select></div>
+      <div class="form-group"><label>Actividad</label><select id="l_actividad"><option>960 - SERVICIOS AUXILIARES</option><option>910 - LIMPIEZA</option><option>930 - SEGURIDAD</option><option>940 - SOCIOSANITARIO</option><option>950 - MANTENIMIENTO</option><option>OTRA</option></select></div>
+      <div class="form-group"><label>Provincia</label><select id="l_prov"><option>04-ALMERIA</option><option>11-CADIZ</option><option>14-CORDOBA</option><option>18-GRANADA</option><option>21-HUELVA</option><option>23-JAEN</option><option selected>29-MALAGA</option><option>41-SEVILLA</option><option>51-CEUTA</option><option>52-MELILLA</option></select></div>
+      <div class="form-group span2"><label>Actor / Demandante</label><input type="text" id="l_actor"></div>
+      <div class="form-group"><label>Nº actores</label><input type="number" id="l_nactores" min="1" value="1"></div>
+      <div class="form-group"><label>Centro</label><input type="text" id="l_centro"></div>
+      <div class="form-group"><label>Letrado/a</label><input type="text" id="l_letrado"></div>
+      <div class="form-group"><label>Técnico</label><input type="text" id="l_tecnico"></div>
+      <div class="section-label">Fechas</div>
+      <div class="form-group"><label>F. presentación</label><input type="date" id="l_fpres"></div>
+      <div class="form-group"><label>F. juicio</label><input type="date" id="l_fjuicio"></div>
+      <div class="form-group"><label>F. sentencia</label><input type="date" id="l_fsent"></div>
+      <div class="section-label">Económico</div>
+      <div class="form-group"><label>Cuantía reclamada (€)</label><input type="number" id="l_reclamado" min="0" step="0.01" value="0"></div>
+      <div class="form-group"><label>Provisión contable (€)</label><input type="number" id="l_provision" min="0" step="0.01" value="0"></div>
+      <div class="form-group"><label>Coste final (€)</label><input type="number" id="l_coste" min="0" step="0.01" value="0"></div>
+      <div class="section-label">Resultado</div>
+      <div class="form-group"><label>Estado</label><select id="l_estado"><option>En trámite</option><option>Cerrado</option><option>Suspendido</option><option>En recurso</option></select></div>
+      <div class="form-group"><label>Resultado</label><select id="l_resultado"><option>Pendiente</option><option>Favorable (absolución)</option><option>Desistimiento</option><option>Acuerdo / Conciliación</option><option>Condena parcial</option><option>Condena total</option><option>Improcedencia con opción</option><option>Nulidad</option></select></div>
+      <div class="form-group"><label>¿Recurso?</label><select id="l_recurso"><option>No</option><option>Sí - interpuesto por empresa</option><option>Sí - interpuesto por actor</option><option>Sí - ambos</option></select></div>
+      <div class="form-group span3"><label>Objeto / Resumen</label><textarea id="l_objeto"></textarea></div>
+      <div class="form-group span3"><label>Observaciones / Estrategia</label><textarea id="l_obs"></textarea></div>
+    </div></div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('litModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveLit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".xlsx,.json" style="display:none">
+<div class="toast" id="toast"></div>
+<div class="footer-bar">⛯ VIGÍA · Control de Riesgo Laboral Zona Sur · Grupo Eulen · Dpto. Relaciones Laborales · Súbelo a Vigía · Regístralo en Vigía</div>
+
+<script>
+const SUPA_URL = 'https://efrmspivqnjiimtmeirb.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmcm1zcGl2cW5qaWltdG1laXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5ODY1MjEsImV4cCI6MjA5MzU2MjUyMX0.H5BZ6JZWI09GO9DGTSxKwNd9ae2e6znIX23nilBWQ2A';
+const { createClient } = supabase;
+const sb = createClient(SUPA_URL, SUPA_KEY);
+
+let itssData = [], litData = [];
+let editItssId = null, editLitId = null;
+let charts = {};
+
+/* ---- UTIL ---- */
+function fmtEur(n){ return (Number(n)||0).toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+' €'; }
+function toast(msg,dur=2800){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
+function setSyncStatus(ok,msg){ const el=document.getElementById('syncStatus'); el.textContent=msg; el.className='sync-status '+(ok?'ok':'err'); }
+function loading(on){ document.getElementById('loadingOverlay').classList.toggle('hidden',!on); }
+
+/* ---- SUPABASE LOAD ---- */
+async function loadAll(){
+  loading(true);
+  try{
+    const [ri,rl] = await Promise.all([
+      sb.from('inspecciones_itss').select('*').order('ejercicio',{ascending:false}),
+      sb.from('litigiosidad').select('*').order('year',{ascending:false})
+    ]);
+    if(ri.error) throw ri.error;
+    if(rl.error) throw rl.error;
+    itssData = ri.data || [];
+    litData  = rl.data || [];
+    setSyncStatus(true,'● Conectado');
+    refreshFilterOptions();
+  }catch(e){
+    console.error(e);
+    setSyncStatus(false,'✕ Sin conexión');
+    toast('⚠ Error de conexión con Supabase: '+e.message, 4000);
+  }finally{ loading(false); }
+}
+
+/* ---- NAV ---- */
+function switchView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelector(`.tab[data-view="${v}"]`).classList.add('active');
+  if(v==='dashboard') renderDashboard();
+  if(v==='itss') renderItss();
+  if(v==='lit') renderLit();
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+/* ---- FILTER OPTIONS ---- */
+function fillSelect(id, values){
+  const el=document.getElementById(id); if(!el) return;
+  const cur=el.value, first=el.options[0].outerHTML;
+  el.innerHTML=first+[...new Set(values.filter(Boolean))].sort().map(v=>`<option>${v}</option>`).join('');
+  el.value=cur;
+}
+function refreshFilterOptions(){
+  fillSelect('itssFYear', itssData.map(r=>String(r.ejercicio)));
+  fillSelect('itssFProv',  itssData.map(r=>r.prov));
+  fillSelect('itssFAct',   itssData.map(r=>r.actividad));
+  fillSelect('litFYear',   litData.map(r=>String(r.year)));
+  fillSelect('litFProv',   litData.map(r=>r.prov));
+  fillSelect('litFAct',    litData.map(r=>r.actividad));
+  fillSelect('litFTipo',   litData.map(r=>r.tipo));
+  fillSelect('litFResult', litData.map(r=>r.resultado));
+  fillSelect('dashYear', [...itssData.map(r=>String(r.ejercicio)),...litData.map(r=>String(r.year))]);
+  fillSelect('dashProv',  [...itssData.map(r=>r.prov),...litData.map(r=>r.prov)]);
+  fillSelect('dashAct',   [...itssData.map(r=>r.actividad),...litData.map(r=>r.actividad)]);
+}
+
+/* ---- ITSS CRUD ---- */
+const ITSS_F = ['doc','ejercicio','fecha','empresa','actividad','prov','centro','tipo','causa','insp_nom','insp_ape','estado','resultado','importe','anulada','tecnico','objeto','obs'];
+function openItssModal(id=null){
+  editItssId=id;
+  document.getElementById('itssModalTitle').textContent=id?'Editar inspección':'Nueva inspección';
+  const r=id?itssData.find(x=>x.id===id):null;
+  ITSS_F.forEach(f=>{
+    const el=document.getElementById('i_'+f); if(!el) return;
+    el.value = r ? (r[f]??'') : (f==='ejercicio'?new Date().getFullYear():(f==='importe'?0:(el.tagName==='SELECT'?el.options[0].value:'')));
+  });
+  if(!r){ document.getElementById('i_prov').value='29-MALAGA'; document.getElementById('i_estado').value='Abierto'; document.getElementById('i_resultado').value='Pendiente'; document.getElementById('i_anulada').value='No'; }
+  document.getElementById('itssModal').classList.add('open');
+}
+async function saveItss(){
+  const doc=document.getElementById('i_doc').value.trim();
+  const ej=document.getElementById('i_ejercicio').value;
+  if(!doc||!ej){ toast('⚠ Nº documento y ejercicio son obligatorios'); return; }
+  const rec={};
+  ITSS_F.forEach(f=>{ const el=document.getElementById('i_'+f); if(el) rec[f]=el.value; });
+  rec.importe=Number(rec.importe)||0;
+  rec.ejercicio=Number(rec.ejercicio)||null;
+  rec.fecha=rec.fecha||null;
+  try{
+    let res;
+    if(editItssId){ res=await sb.from('inspecciones_itss').update(rec).eq('id',editItssId).select().single(); }
+    else { res=await sb.from('inspecciones_itss').insert(rec).select().single(); }
+    if(res.error) throw res.error;
+    if(editItssId){ const idx=itssData.findIndex(x=>x.id===editItssId); itssData[idx]=res.data; }
+    else { itssData.unshift(res.data); }
+    closeModal('itssModal'); renderItss(); toast('✔ Inspección guardada en Vigía');
+  }catch(e){ toast('⚠ Error al guardar: '+e.message,4000); }
+}
+async function delItss(id){
+  if(!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
+  const {error}=await sb.from('inspecciones_itss').delete().eq('id',id);
+  if(error){ toast('⚠ Error al eliminar: '+error.message,4000); return; }
+  itssData=itssData.filter(x=>x.id!==id); renderItss(); toast('Registro eliminado');
+}
+
+/* ---- LIT CRUD ---- */
+const LIT_F = ['autos','year','fase','tipo','juzgado','prov','empresa','actividad','centro','actor','nactores','fpres','fjuicio','fsent','letrado','reclamado','provision','coste','estado','resultado','recurso','objeto','obs','tecnico'];
+function openLitModal(id=null){
+  editLitId=id;
+  document.getElementById('litModalTitle').textContent=id?'Editar demanda':'Nueva demanda / reclamación';
+  const r=id?litData.find(x=>x.id===id):null;
+  LIT_F.forEach(f=>{
+    const el=document.getElementById('l_'+f); if(!el) return;
+    el.value = r ? (r[f]??'') : (f==='year'?new Date().getFullYear():(['reclamado','provision','coste'].includes(f)?0:(f==='nactores'?1:(el.tagName==='SELECT'?el.options[0].value:''))));
+  });
+  if(!r){ document.getElementById('l_prov').value='29-MALAGA'; document.getElementById('l_estado').value='En trámite'; document.getElementById('l_resultado').value='Pendiente'; document.getElementById('l_fase').value='Demanda judicial'; }
+  document.getElementById('litModal').classList.add('open');
+}
+async function saveLit(){
+  const autos=document.getElementById('l_autos').value.trim();
+  if(!autos){ toast('⚠ El nº de autos es obligatorio'); return; }
+  const rec={};
+  LIT_F.forEach(f=>{ const el=document.getElementById('l_'+f); if(el) rec[f]=el.value; });
+  ['reclamado','provision','coste'].forEach(f=>rec[f]=Number(rec[f])||0);
+  rec.nactores=Number(rec.nactores)||1;
+  rec.year=Number(rec.year)||null;
+  ['fpres','fjuicio','fsent'].forEach(f=>{ if(!rec[f]) rec[f]=null; });
+  try{
+    let res;
+    if(editLitId){ res=await sb.from('litigiosidad').update(rec).eq('id',editLitId).select().single(); }
+    else { res=await sb.from('litigiosidad').insert(rec).select().single(); }
+    if(res.error) throw res.error;
+    if(editLitId){ const idx=litData.findIndex(x=>x.id===editLitId); litData[idx]=res.data; }
+    else { litData.unshift(res.data); }
+    closeModal('litModal'); renderLit(); toast('✔ Demanda guardada en Vigía');
+  }catch(e){ toast('⚠ Error al guardar: '+e.message,4000); }
+}
+async function delLit(id){
+  if(!confirm('¿Eliminar este procedimiento? No se puede deshacer.')) return;
+  const {error}=await sb.from('litigiosidad').delete().eq('id',id);
+  if(error){ toast('⚠ Error al eliminar: '+error.message,4000); return; }
+  litData=litData.filter(x=>x.id!==id); renderLit(); toast('Registro eliminado');
+}
+
+/* ---- RENDER ITSS ---- */
+function bEstItss(e){ return e==='Abierto'?'<span class="badge b-amber">Abierto</span>':'<span class="badge b-green">Cerrado</span>'; }
+function bResItss(r){
+  if(!r||r==='Pendiente') return '<span class="badge b-gray">Pendiente</span>';
+  if(r.startsWith('Acta')) return `<span class="badge b-red">${r}</span>`;
+  if(r==='Favorable') return '<span class="badge b-green">Favorable</span>';
+  if(r==='Requerimiento') return '<span class="badge b-amber">Requerimiento</span>';
+  return `<span class="badge b-blue">${r}</span>`;
+}
+function renderItss(){
+  refreshFilterOptions();
+  const q=document.getElementById('itssSearch').value.toLowerCase();
+  const fy=document.getElementById('itssFYear').value, fp=document.getElementById('itssFProv').value,
+        fa=document.getElementById('itssFAct').value, fe=document.getElementById('itssFEstado').value,
+        ft=document.getElementById('itssFTipo').value;
+  const rows=itssData.filter(r=>
+    (!fy||String(r.ejercicio)===fy)&&(!fp||r.prov===fp)&&(!fa||r.actividad===fa)&&(!fe||r.estado===fe)&&(!ft||r.tipo===ft)&&
+    (!q||[r.doc,r.insp_nom,r.insp_ape,r.objeto,r.centro,r.obs].join(' ').toLowerCase().includes(q))
+  );
+  const abiertos=rows.filter(r=>r.estado==='Abierto').length;
+  const actas=rows.filter(r=>(r.resultado||'').startsWith('Acta')&&r.anulada==='No').length;
+  const imp=rows.filter(r=>r.anulada==='No').reduce((s,r)=>s+(Number(r.importe)||0),0);
+  document.getElementById('itssKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-value">${rows.length}</div><div class="kpi-label">Expedientes</div></div>
+    <div class="kpi-card amber"><div class="kpi-value">${abiertos}</div><div class="kpi-label">Abiertos</div></div>
+    <div class="kpi-card red"><div class="kpi-value">${actas}</div><div class="kpi-label">Actas vigentes</div></div>
+    <div class="kpi-card red"><div class="kpi-value">${fmtEur(imp)}</div><div class="kpi-label">Importe sanciones</div></div>`;
+  document.querySelector('#itssTable thead').innerHTML=`<tr><th>Nº Doc</th><th>Año</th><th>Prov.</th><th>Actividad</th><th>Centro</th><th>Tipo</th><th>Inspector/a</th><th>Estado</th><th>Resultado</th><th>Importe</th><th>Anulada</th><th>Técnico</th><th></th></tr>`;
+  document.querySelector('#itssTable tbody').innerHTML=rows.map(r=>`<tr>
+    <td><strong>${r.doc||''}</strong></td><td>${r.ejercicio||''}</td>
+    <td>${(r.prov||'').replace(/^\d+-/,'')}</td><td>${(r.actividad||'').split(' - ')[0]}</td>
+    <td>${r.centro||'—'}</td><td><span class="badge ${r.tipo==='PRL'?'b-teal':'b-blue'}">${r.tipo||''}</span></td>
+    <td>${[r.insp_nom,r.insp_ape].filter(Boolean).join(' ')||'—'}</td>
+    <td>${bEstItss(r.estado)}</td><td>${bResItss(r.resultado)}</td>
+    <td style="text-align:right">${r.importe>0?fmtEur(r.importe):'—'}</td>
+    <td>${r.anulada&&r.anulada!=='No'?`<span class="badge b-gray">${r.anulada}</span>`:'—'}</td>
+    <td>${r.tecnico||'—'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-outline btn-sm" onclick="openItssModal('${r.id}')">✎</button> <button class="btn btn-danger btn-sm" onclick="delItss('${r.id}')">🗑</button></td>
+  </tr>`).join('');
+  document.getElementById('itssEmpty').style.display=rows.length?'none':'block';
+}
+
+/* ---- RENDER LIT ---- */
+function bResLit(r){
+  if(!r||r==='Pendiente') return '<span class="badge b-gray">Pendiente</span>';
+  if(r.startsWith('Favorable')||r==='Desistimiento') return `<span class="badge b-green">${r}</span>`;
+  if(r==='Nulidad'||r==='Condena total') return `<span class="badge b-red">${r}</span>`;
+  if(r==='Acuerdo / Conciliación') return `<span class="badge b-blue">${r}</span>`;
+  return `<span class="badge b-amber">${r}</span>`;
+}
+function renderLit(){
+  refreshFilterOptions();
+  const q=document.getElementById('litSearch').value.toLowerCase();
+  const fy=document.getElementById('litFYear').value, fp=document.getElementById('litFProv').value,
+        fa=document.getElementById('litFAct').value,  ft=document.getElementById('litFTipo').value,
+        fr=document.getElementById('litFResult').value;
+  const rows=litData.filter(r=>
+    (!fy||String(r.year)===fy)&&(!fp||r.prov===fp)&&(!fa||r.actividad===fa)&&(!ft||r.tipo===ft)&&(!fr||r.resultado===fr)&&
+    (!q||[r.autos,r.actor,r.centro,r.objeto,r.juzgado,r.obs].join(' ').toLowerCase().includes(q))
+  );
+  const tram=rows.filter(r=>r.estado==='En trámite'||r.estado==='En recurso').length;
+  const resueltos=rows.filter(r=>r.resultado&&r.resultado!=='Pendiente');
+  const fav=resueltos.filter(r=>(r.resultado||'').startsWith('Favorable')||r.resultado==='Desistimiento').length;
+  const tasa=resueltos.length?Math.round(100*fav/resueltos.length):0;
+  const coste=rows.reduce((s,r)=>s+(Number(r.coste)||0),0);
+  const prov=rows.filter(r=>r.estado!=='Cerrado').reduce((s,r)=>s+(Number(r.provision)||0),0);
+  document.getElementById('litKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-value">${rows.length}</div><div class="kpi-label">Procedimientos</div></div>
+    <div class="kpi-card amber"><div class="kpi-value">${tram}</div><div class="kpi-label">En trámite / recurso</div></div>
+    <div class="kpi-card green"><div class="kpi-value">${tasa}%</div><div class="kpi-label">Tasa éxito s/ resueltos</div></div>
+    <div class="kpi-card red"><div class="kpi-value">${fmtEur(coste)}</div><div class="kpi-label">Coste acumulado</div></div>
+    <div class="kpi-card teal"><div class="kpi-value">${fmtEur(prov)}</div><div class="kpi-label">Provisión viva</div></div>`;
+  document.querySelector('#litTable thead').innerHTML=`<tr><th>Autos</th><th>Año</th><th>Tipo</th><th>Actor</th><th>Prov.</th><th>Actividad</th><th>Centro</th><th>F. Juicio</th><th>Estado</th><th>Resultado</th><th>Reclamado</th><th>Coste</th><th>Técnico</th><th></th></tr>`;
+  document.querySelector('#litTable tbody').innerHTML=rows.map(r=>`<tr>
+    <td><strong>${r.autos||''}</strong></td><td>${r.year||''}</td><td>${r.tipo||'—'}</td>
+    <td>${r.actor||'—'}${r.nactores>1?` <span class="badge b-blue">×${r.nactores}</span>`:''}</td>
+    <td>${(r.prov||'').replace(/^\d+-/,'')}</td><td>${(r.actividad||'').split(' - ')[0]}</td>
+    <td>${r.centro||'—'}</td><td>${r.fjuicio||'—'}</td>
+    <td><span class="badge ${r.estado==='Cerrado'?'b-green':r.estado==='En recurso'?'b-amber':'b-gray'}">${r.estado||''}</span></td>
+    <td>${bResLit(r.resultado)}</td>
+    <td style="text-align:right">${r.reclamado>0?fmtEur(r.reclamado):'—'}</td>
+    <td style="text-align:right">${r.coste>0?fmtEur(r.coste):'—'}</td>
+    <td>${r.tecnico||'—'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-outline btn-sm" onclick="openLitModal('${r.id}')">✎</button> <button class="btn btn-danger btn-sm" onclick="delLit('${r.id}')">🗑</button></td>
+  </tr>`).join('');
+  document.getElementById('litEmpty').style.display=rows.length?'none':'block';
+}
+
+/* ---- DASHBOARD ---- */
+function mkChart(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
+function resetDashFilters(){ ['dashYear','dashProv','dashAct'].forEach(id=>document.getElementById(id).value=''); renderDashboard(); }
+function renderDashboard(){
+  const fy=document.getElementById('dashYear').value, fp=document.getElementById('dashProv').value, fa=document.getElementById('dashAct').value;
+  const itss=itssData.filter(r=>(!fy||String(r.ejercicio)===fy)&&(!fp||r.prov===fp)&&(!fa||r.actividad===fa));
+  const lit=litData.filter(r=>(!fy||String(r.year)===fy)&&(!fp||r.prov===fp)&&(!fa||r.actividad===fa));
+  const actasVig=itss.filter(r=>(r.resultado||'').startsWith('Acta')&&r.anulada==='No');
+  const impItss=actasVig.reduce((s,r)=>s+(Number(r.importe)||0),0);
+  const costeLit=lit.reduce((s,r)=>s+(Number(r.coste)||0),0);
+  const provViva=lit.filter(r=>r.estado!=='Cerrado').reduce((s,r)=>s+(Number(r.provision)||0),0);
+  const resueltos=lit.filter(r=>r.resultado&&r.resultado!=='Pendiente');
+  const fav=resueltos.filter(r=>(r.resultado||'').startsWith('Favorable')||r.resultado==='Desistimiento').length;
+  const tasa=resueltos.length?Math.round(100*fav/resueltos.length):0;
+  document.getElementById('dashKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-value">${itss.length}</div><div class="kpi-label">Inspecciones ITSS</div></div>
+    <div class="kpi-card amber"><div class="kpi-value">${itss.filter(r=>r.estado==='Abierto').length}</div><div class="kpi-label">ITSS abiertas</div></div>
+    <div class="kpi-card red"><div class="kpi-value">${fmtEur(impItss)}</div><div class="kpi-label">Sanciones vigentes</div></div>
+    <div class="kpi-card"><div class="kpi-value">${lit.length}</div><div class="kpi-label">Procedimientos</div></div>
+    <div class="kpi-card green"><div class="kpi-value">${tasa}%</div><div class="kpi-label">Tasa éxito judicial</div></div>
+    <div class="kpi-card red"><div class="kpi-value">${fmtEur(costeLit)}</div><div class="kpi-label">Coste litigios</div></div>
+    <div class="kpi-card teal"><div class="kpi-value">${fmtEur(provViva)}</div><div class="kpi-label">Provisión viva</div></div>`;
+  const years=[...new Set([...itss.map(r=>String(r.ejercicio)),...lit.map(r=>String(r.year))])].filter(Boolean).sort();
+  const C='#0a2463',R='#c8102e',A='#f59e0b',G='#059669',T='#0d9488';
+  mkChart('dc1',{type:'bar',data:{labels:years,datasets:[{label:'Expedientes',data:years.map(y=>itss.filter(r=>String(r.ejercicio)===y).length),backgroundColor:'rgba(10,36,99,.75)',borderRadius:4},{label:'Actas vigentes',data:years.map(y=>itss.filter(r=>String(r.ejercicio)===y&&(r.resultado||'').startsWith('Acta')&&r.anulada==='No').length),backgroundColor:R,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10}}}},scales:{y:{beginAtZero:true}}}});
+  mkChart('dc2',{type:'bar',data:{labels:years,datasets:[{label:'€',data:years.map(y=>itss.filter(r=>String(r.ejercicio)===y&&r.anulada==='No').reduce((s,r)=>s+(Number(r.importe)||0),0)),backgroundColor:A,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString('es-ES')+'€'}}}}});
+  const resCounts={};lit.forEach(r=>{const k=r.resultado||'Pendiente';resCounts[k]=(resCounts[k]||0)+1;});
+  mkChart('dc3',{type:'doughnut',data:{labels:Object.keys(resCounts),datasets:[{data:Object.values(resCounts),backgroundColor:[G,'#9ca3af',C,A,R,'#7c3aed',T,'#f97316'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},padding:5}}}}});
+  mkChart('dc4',{type:'bar',data:{labels:years,datasets:[{label:'€',data:years.map(y=>lit.filter(r=>String(r.year)===y).reduce((s,r)=>s+(Number(r.coste)||0),0)),backgroundColor:R,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString('es-ES')+'€'}}}}});
+}
+
+/* ---- IMPORT/EXPORT ---- */
+function itssRows(){ return itssData.map(r=>({'Nº documento':r.doc,'Ejercicio':r.ejercicio,'Empresa':r.empresa,'Actividad':r.actividad,'Provincia':r.prov,'Centro':r.centro,'Fecha':r.fecha,'Tipo':r.tipo,'Causa':r.causa,'Inspector nombre':r.insp_nom,'Inspector apellidos':r.insp_ape,'Estado':r.estado,'Resultado':r.resultado,'Importe':r.importe,'Acta anulada':r.anulada,'Técnico':r.tecnico,'Objeto':r.objeto,'Observaciones':r.obs})); }
+function litRows(){  return litData.map(r=>({'Autos':r.autos,'Año':r.year,'Fase':r.fase,'Tipo procedimiento':r.tipo,'Juzgado':r.juzgado,'Provincia':r.prov,'Empresa':r.empresa,'Actividad':r.actividad,'Centro':r.centro,'Actor':r.actor,'Nº actores':r.nactores,'F. presentación':r.fpres,'F. juicio':r.fjuicio,'F. sentencia':r.fsent,'Letrado':r.letrado,'Cuantía reclamada':r.reclamado,'Provisión':r.provision,'Coste final':r.coste,'Estado':r.estado,'Resultado':r.resultado,'Recurso':r.recurso,'Objeto':r.objeto,'Observaciones':r.obs,'Técnico':r.tecnico})); }
+
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(itssRows().length?itssRows():[{}]),'ITSS');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(litRows().length?litRows():[{}]),'Litigiosidad');
+  XLSX.writeFile(wb,'VIGIA_ZonaSur_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  closeMenus(); toast('✔ Excel exportado');
+}
+
+function exportCSV(tabla){
+  const rows = tabla==='itss' ? itssRows() : litRows();
+  if(!rows.length){ toast('⚠ Sin datos para exportar'); return; }
+  const cols=Object.keys(rows[0]);
+  const escape=v=>{ const s=String(v??''); return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s; };
+  const csv=[cols.map(escape).join(','), ...rows.map(r=>cols.map(c=>escape(r[c])).join(','))].join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`VIGIA_${tabla.toUpperCase()}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); closeMenus(); toast('✔ CSV exportado');
+}
+
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({itss:itssData,lit:litData,fecha:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='backup_vigia_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  closeMenus(); toast('✔ Backup JSON descargado');
+}
+
+function closeMenus(){ document.querySelectorAll('.drop-menu').forEach(m=>m.classList.remove('open-menu')); }
+document.addEventListener('click', e=>{ if(!e.target.closest('.header-actions')) closeMenus(); });
+
+let currentAccept='.xlsx,.csv,.json';
+function triggerImport(accept){ currentAccept=accept; const fi=document.getElementById('fileInput'); fi.accept=accept; fi.click(); closeMenus(); }
+function importExcel(){ triggerImport('.xlsx,.csv,.json'); }
+
+/* CSV parser helper */
+function parseCSVRows(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(!lines.length) return [];
+  const splitCSV=line=>{
+    const res=[]; let cur='', inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ; }
+      else if(c===','&&!inQ){ res.push(cur); cur=''; }
+      else cur+=c;
+    }
+    res.push(cur); return res;
+  };
+  const headers=splitCSV(lines[0]).map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(l=>{ const vals=splitCSV(l); const obj={}; headers.forEach((h,i)=>obj[h]=(vals[i]||'').trim().replace(/^"|"$/g,'')); return obj; });
+}
+
+async function processRows(rows, nI, nL){
+  if(!rows.length) return [nI,nL];
+  const cols=Object.keys(rows[0]).map(c=>c.toLowerCase());
+  const isItss=cols.some(c=>c.includes('documento'))||cols.some(c=>c.includes('inspector'));
+  const isLit=cols.some(c=>c.includes('autos'));
+  if(isItss){
+    const toInsert=[];
+    rows.forEach(r=>{
+      const doc=String(r['Nº documento']||r['N documento']||r['Nº doc']||r['doc']||'').trim(); if(!doc) return;
+      if(itssData.some(x=>String(x.doc)===doc)) return;
+      toInsert.push({doc,ejercicio:parseInt(r['Ejercicio']||r['ejercicio'])||null,empresa:String(r['Empresa']||''),
+        actividad:String(r['Actividad']||'').trim(),prov:String(r['Provincia']||r['Prov']||r['prov']||''),centro:String(r['Centro']||''),
+        fecha:r['Fecha de inicio']||r['Fecha']||r['fecha']?String(r['Fecha de inicio']||r['Fecha']||r['fecha']):null,
+        tipo:String(r['Tipo']||'RRLL'),causa:String(r['Causa']||''),
+        insp_nom:String(r['Inspector nombre']||r['insp_nom']||'').trim(),
+        insp_ape:String(r['Inspector apellidos']||r['insp_ape']||'').trim(),
+        estado:/abierto/i.test(String(r['Estado']||r['estado']||''))?'Abierto':'Cerrado',
+        resultado:String(r['Resultado']||r['resultado']||'Pendiente').replace(/^(cerrado|CERRADO)$/,'Cerrado sin acta'),
+        importe:Number(String(r['Importe']||r['importe']||'0').replace(',','.'))||0,
+        anulada:String(r['Acta anulada']||r['anulada']||'No'),
+        tecnico:String(r['Técnico']||r['tecnico']||''),
+        objeto:String(r['Objeto']||r['objeto']||''),obs:String(r['Observaciones']||r['obs']||'')});
+    });
+    if(toInsert.length){
+      const {data,error}=await sb.from('inspecciones_itss').insert(toInsert).select();
+      if(error) throw error;
+      itssData=[...data,...itssData]; nI+=data.length;
+    }
+  } else if(isLit){
+    const toInsert=[];
+    rows.forEach(r=>{
+      const autos=String(r['Autos']||r['autos']||'').trim(); if(!autos) return;
+      if(litData.some(x=>x.autos===autos&&String(x.year)===String(r['Año']||r['year']||''))) return;
+      toInsert.push({autos,year:parseInt(r['Año']||r['year'])||null,fase:String(r['Fase']||'Demanda judicial'),
+        tipo:String(r['Tipo procedimiento']||r['Tipo']||r['tipo']||''),
+        juzgado:String(r['Juzgado']||''),prov:String(r['Provincia']||r['prov']||''),
+        empresa:String(r['Empresa']||''),actividad:String(r['Actividad']||''),centro:String(r['Centro']||''),
+        actor:String(r['Actor']||''),nactores:Number(r['Nº actores']||r['nactores']||1)||1,
+        fpres:r['F. presentación']?String(r['F. presentación']):null,
+        fjuicio:r['F. juicio']?String(r['F. juicio']):null,
+        fsent:r['F. sentencia']?String(r['F. sentencia']):null,
+        letrado:String(r['Letrado']||''),
+        reclamado:Number(String(r['Cuantía reclamada']||r['reclamado']||'0').replace(',','.'))||0,
+        provision:Number(String(r['Provisión']||r['provision']||'0').replace(',','.'))||0,
+        coste:Number(String(r['Coste final']||r['coste']||'0').replace(',','.'))||0,
+        estado:String(r['Estado']||'En trámite'),resultado:String(r['Resultado']||'Pendiente'),
+        recurso:String(r['Recurso']||'No'),objeto:String(r['Objeto']||''),
+        obs:String(r['Observaciones']||r['obs']||''),tecnico:String(r['Técnico']||r['tecnico']||'')});
+    });
+    if(toInsert.length){
+      const {data,error}=await sb.from('litigiosidad').insert(toInsert).select();
+      if(error) throw error;
+      litData=[...data,...litData]; nL+=data.length;
+    }
+  }
+  return [nI,nL];
+}
+
+document.getElementById('fileInput').addEventListener('change', async function(e){
+  const f=e.target.files[0]; if(!f) return;
+  const isCsv=f.name.endsWith('.csv');
+  const isJson=f.name.endsWith('.json');
+  const reader=new FileReader();
+
+  if(isJson){
+    reader.onload=async ev=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        if(!confirm(`¿Restaurar backup del ${d.fecha?new Date(d.fecha).toLocaleDateString('es-ES'):'archivo'}? Esto BORRARÁ todos los datos actuales en Supabase y los sustituirá por los del backup.`)) return;
+        loading(true);
+        await sb.from('inspecciones_itss').delete().neq('id','00000000-0000-0000-0000-000000000000');
+        await sb.from('litigiosidad').delete().neq('id','00000000-0000-0000-0000-000000000000');
+        if(d.itss?.length){ const {data}=await sb.from('inspecciones_itss').insert(d.itss.map(r=>{const {id,created_at,updated_at,...rest}=r;return rest;})).select(); itssData=data||[]; }
+        if(d.lit?.length){ const {data}=await sb.from('litigiosidad').insert(d.lit.map(r=>{const {id,created_at,updated_at,...rest}=r;return rest;})).select(); litData=data||[]; }
+        loading(false); refreshFilterOptions(); renderItss(); renderLit(); renderDashboard();
+        toast('✔ Backup restaurado correctamente');
+      }catch(err){ loading(false); toast('⚠ Error al restaurar: '+err.message,5000); }
+    };
+    reader.readAsText(f,'UTF-8');
+  } else if(isCsv){
+    reader.onload=async ev=>{
+      try{
+        loading(true);
+        const rows=parseCSVRows(ev.target.result);
+        let [nI,nL]=await processRows(rows,0,0);
+        loading(false); refreshFilterOptions(); renderItss(); renderLit(); renderDashboard();
+        toast(`✔ CSV importado: ${nI} ITSS, ${nL} procedimientos`);
+      }catch(err){ loading(false); toast('⚠ Error al importar CSV: '+err.message,5000); }
+    };
+    reader.readAsText(f,'UTF-8');
+  } else {
+    reader.onload=async ev=>{
+      try{
+        loading(true);
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
+        let nI=0, nL=0;
+        for(const name of wb.SheetNames){
+          const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:''});
+          [nI,nL]=await processRows(rows,nI,nL);
+        }
+        loading(false); refreshFilterOptions(); renderItss(); renderLit(); renderDashboard();
+        toast(`✔ Importados ${nI} expedientes ITSS y ${nL} procedimientos`);
+      }catch(err){ loading(false); toast('⚠ Error al importar: '+err.message,5000); }
+    };
+    reader.readAsArrayBuffer(f);
+  }
+  e.target.value='';
+});
+
+/* ---- PURGAR TODOS LOS DATOS ---- */
+async function purgeAll(){
+  const conf1=confirm('⚠ ATENCIÓN: Vas a borrar TODOS los datos de Vigía (inspecciones y litigiosidad).\n\nEsta acción no se puede deshacer. ¿Continuar?');
+  if(!conf1) return;
+  const code=prompt('Escribe BORRAR TODO para confirmar:');
+  if(code!=='BORRAR TODO'){ toast('Operación cancelada'); return; }
+  loading(true);
+  try{
+    await sb.from('inspecciones_itss').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await sb.from('litigiosidad').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    itssData=[]; litData=[];
+    refreshFilterOptions(); renderItss(); renderLit(); renderDashboard();
+    toast('Todos los datos han sido eliminados');
+  }catch(err){ toast('⚠ Error al purgar: '+err.message,5000); }
+  finally{ loading(false); }
+}
+
+/* ---- PWA SERVICE WORKER ---- */
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ---- INIT ---- */
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m) m.classList.remove('open');}));
+loadAll().then(()=>{ renderDashboard(); renderItss(); renderLit(); });
+</script>
+</body>
+</html>
