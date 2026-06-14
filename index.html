@@ -209,6 +209,7 @@ header{position:relative;}
       <div class="form-group"><label>Provincia</label><select id="i_prov"><option>04-ALMERIA</option><option>11-CADIZ</option><option>14-CORDOBA</option><option>18-GRANADA</option><option>21-HUELVA</option><option>23-JAEN</option><option selected>29-MALAGA</option><option>41-SEVILLA</option><option>51-CEUTA</option><option>52-MELILLA</option></select></div>
       <div class="form-group span2"><label>Cliente / Centro</label><input type="text" id="i_centro"></div>
       <div class="form-group"><label>Tipo</label><select id="i_tipo"><option>RRLL</option><option>PRL</option><option>SS</option><option>Empleo</option></select></div>
+      <div class="form-group span2"><label>Objeto denuncia / Materia</label><input type="text" id="i_objeto_denuncia" placeholder="Registro jornada, contratos, PRL..."></div>
       <div class="form-group span3"><label>Causa</label><select id="i_causa"><option></option><option>CITACIÓN</option><option>DENUNCIA</option><option>VISITA</option><option>ACCIDENTE DE TRABAJO</option><option>CAMPAÑA</option><option>OFICIO</option><option>OTRA</option></select></div>
       <div class="section-label">Inspector/a</div>
       <div class="form-group"><label>Nombre</label><input type="text" id="i_insp_nom"></div>
@@ -220,7 +221,7 @@ header{position:relative;}
       <div class="form-group span2"><label>¿Acta anulada?</label><select id="i_anulada"><option>No</option><option>Sí - en alzada</option><option>Sí - vía judicial</option><option>Recurso en trámite</option></select></div>
       <div class="form-group"><label>Técnico responsable</label><input type="text" id="i_tecnico"></div>
       <div class="form-group span3"><label>Objeto de la actuación</label><textarea id="i_objeto"></textarea></div>
-      <div class="form-group span3"><label>Observaciones</label><textarea id="i_obs"></textarea></div>
+      <div class="form-group span3"><label>Observaciones / Comentarios</label><textarea id="i_obs" placeholder="Anotaciones internas, seguimiento, incidencias..."></textarea></div>
     </div></div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal('itssModal')">Cancelar</button>
@@ -365,7 +366,7 @@ function refreshFilterOptions(){
 }
 
 /* ---- ITSS CRUD ---- */
-const ITSS_F = ['doc','ejercicio','fecha','empresa','actividad','prov','centro','tipo','causa','insp_nom','insp_ape','estado','resultado','importe','anulada','tecnico','objeto','obs'];
+const ITSS_F = ['doc','ejercicio','fecha','empresa','actividad','prov','centro','tipo','objeto_denuncia','causa','insp_nom','insp_ape','estado','resultado','importe','anulada','tecnico','objeto','obs'];
 function openItssModal(id=null){
   editItssId=id;
   document.getElementById('itssModalTitle').textContent=id?'Editar inspección':'Nueva inspección';
@@ -469,15 +470,15 @@ function renderItss(){
     <div class="kpi-card amber"><div class="kpi-value">${abiertos}</div><div class="kpi-label">Abiertos</div></div>
     <div class="kpi-card red"><div class="kpi-value">${actas}</div><div class="kpi-label">Actas vigentes</div></div>
     <div class="kpi-card red"><div class="kpi-value">${fmtEur(imp)}</div><div class="kpi-label">Importe sanciones</div></div>`;
-  document.querySelector('#itssTable thead').innerHTML=`<tr><th>Nº Doc</th><th>Año</th><th>Prov.</th><th>Actividad</th><th>Centro</th><th>Tipo</th><th>Inspector/a</th><th>Estado</th><th>Resultado</th><th>Importe</th><th>Anulada</th><th>Técnico</th><th></th></tr>`;
+  document.querySelector('#itssTable thead').innerHTML=`<tr><th>Nº Doc</th><th>Año</th><th>Prov.</th><th>Actividad</th><th>Centro</th><th>Tipo</th><th>Objeto denuncia</th><th>Inspector/a</th><th>Estado</th><th>Resultado</th><th>Importe</th><th>Técnico</th><th></th></tr>`;
   document.querySelector('#itssTable tbody').innerHTML=rows.map(r=>`<tr>
     <td><strong>${r.doc||''}</strong></td><td>${r.ejercicio||''}</td>
     <td>${(r.prov||'').replace(/^\d+-/,'')}</td><td>${(r.actividad||'').split(' - ')[0]}</td>
     <td>${r.centro||'—'}</td><td><span class="badge ${r.tipo==='PRL'?'b-teal':'b-blue'}">${r.tipo||''}</span></td>
+    <td style="font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.objeto_denuncia||''}">${r.objeto_denuncia||'—'}</td>
     <td>${[r.insp_nom,r.insp_ape].filter(Boolean).join(' ')||'—'}</td>
     <td>${bEstItss(r.estado)}</td><td>${bResItss(r.resultado)}</td>
-    <td style="text-align:right">${r.importe>0?fmtEur(r.importe):'—'}</td>
-    <td>${r.anulada&&r.anulada!=='No'?`<span class="badge b-gray">${r.anulada}</span>`:'—'}</td>
+    <td style="text-align:right">${r.importe>0?`${fmtEur(r.importe)}${r.anulada&&r.anulada!=='No'?' <span class="badge b-gray" title="'+r.anulada+'">A</span>':''}`:'—'}</td>
     <td>${r.tecnico||'—'}</td>
     <td style="white-space:nowrap"><button class="btn btn-outline btn-sm" onclick="openItssModal('${r.id}')">✎</button> <button class="btn btn-danger btn-sm" onclick="delItss('${r.id}')">🗑</button></td>
   </tr>`).join('');
